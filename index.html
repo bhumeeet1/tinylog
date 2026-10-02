@@ -3,66 +3,92 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Glucose log</title>
+<title>Tiny log</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-:root{--bg:#f3f6f4;--card:#fff;--ink:#14231c;--mute:#5d6f66;--line:#d9e2dd;--acc:#1f7a5a;--low:#c47a00;--ok:#1f7a5a;--high:#c0392b;
+:root{--a1:#0891b2;--a2:#7c3aed;--bg:#f2f4fb;--card:#fff;--ink:#16192b;--mute:#5f6580;--line:#dde1ef;--low:#d97706;--ok:#16a34a;--high:#dc2626;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1a15;--card:#18261f;--ink:#e6efe9;--mute:#93a79c;--line:#2a3b32;--acc:#4cc79a;--low:#e5a23a;--ok:#4cc79a;--high:#ef6b5c}}
-:root[data-theme="dark"]{--bg:#0f1a15;--card:#18261f;--ink:#e6efe9;--mute:#93a79c;--line:#2a3b32;--acc:#4cc79a;--low:#e5a23a;--ok:#4cc79a;--high:#ef6b5c}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1220;--card:#1a1e33;--ink:#e9ecf8;--mute:#9aa1c0;--line:#2b3050;--low:#f0a63c;--ok:#3ddc84;--high:#ff6b6b}}
+:root[data-theme="dark"]{--bg:#0f1220;--card:#1a1e33;--ink:#e9ecf8;--mute:#9aa1c0;--line:#2b3050;--low:#f0a63c;--ok:#3ddc84;--high:#ff6b6b}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
 main{max-width:1000px;margin:0 auto;padding:16px}
-h1{font:600 1.5rem Georgia,"Times New Roman",serif;margin:0 0 4px}
-.sub{color:var(--mute);margin:0 0 16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
-.stat b{display:block;font-size:1.5rem}
+.hero{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border-radius:14px;padding:18px;margin-bottom:14px}
+h1{font:600 1.6rem Georgia,"Times New Roman",serif;margin:0 0 4px}
+.hero p{margin:0;opacity:.92}
+.sub{color:var(--mute);margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.stat b{display:block;font-size:1.5rem;background:linear-gradient(135deg,var(--a1),var(--a2));-webkit-background-clip:text;background-clip:text;color:transparent}
 .stat span{color:var(--mute);font-size:.8rem}
-form,.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
-label{display:flex;flex-direction:column;font-size:.8rem;color:var(--mute);gap:3px;flex:1 1 130px}
+form,.filters,.themes{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+label{display:flex;flex-direction:column;font-size:.8rem;color:var(--mute);gap:3px;flex:1 1 140px}
 input,select{font:inherit;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);width:100%}
-button{font:inherit;padding:9px 14px;border:0;border-radius:6px;background:var(--acc);color:#fff;cursor:pointer}
-button.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
-button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+input[type=color]{padding:2px;height:38px;min-width:54px}
+button{font:inherit;padding:9px 14px;border:0;border-radius:8px;background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;cursor:pointer}
+button.alt,.seg button{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.seg{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.seg button.on{background:linear-gradient(135deg,var(--a1),var(--a2));color:#fff;border-color:transparent}
+.sw{width:34px;height:34px;padding:0;border-radius:50%;border:2px solid var(--card);box-shadow:0 0 0 1px var(--line)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--a1);outline-offset:2px}
+button:disabled{opacity:.5;cursor:default}
 .chart{position:relative;height:280px}
 .scroll{overflow-x:auto}
-table{width:100%;border-collapse:collapse;min-width:480px}
+table{width:100%;border-collapse:collapse;min-width:640px}
 th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line)}
 th{color:var(--mute);font-weight:500;font-size:.8rem}
 .tag{padding:2px 8px;border-radius:99px;font-size:.75rem;border:1px solid currentColor}
 .low{color:var(--low)}.ok{color:var(--ok)}.high{color:var(--high)}
+.ty{font-size:.8rem;padding:2px 8px;border-radius:6px;background:var(--bg)}
 .del{background:none;color:var(--mute);padding:2px 8px;border:1px solid var(--line)}
 .empty{color:var(--mute);text-align:center;padding:20px}
-.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 </style>
 </head>
 <body>
 <main>
-<h1>Glucose log</h1>
-<p class="sub">Entries stay in this browser. Targets: below 70 low, 70 to 180 in range, above 180 high (mg/dL).</p>
+<div class="hero">
+<h1>Tiny log</h1>
+<p>Glucose targets: below 80 low, 80 to 150 in range, above 150 high (mg/dL).</p>
+</div>
 
-<div class="card row" style="margin-bottom:14px">
-<span id="sync" class="sub" style="margin:0">Not connected</span>
+<div class="card row">
+<span id="sync" class="sub">Not connected</span>
 <button id="gsync" type="button">Connect Google Drive</button>
 </div>
 
 <div class="card">
+<div class="seg" role="group" aria-label="Entry type">
+<button type="button" data-m="glu" class="on" aria-pressed="true">Glucose</button>
+<button type="button" data-m="basal" aria-pressed="false">Basal dose</button>
+<button type="button" data-m="bolus" aria-pressed="false">Bolus dose</button>
+</div>
 <form id="f">
-<label>Reading (mg/dL)<input id="val" type="number" min="20" max="600" required></label>
-<label>Date and time<input id="dt" type="datetime-local" required></label>
-<label>Context<select id="ctx"><option>Fasting</option><option>Before meal</option><option>After meal</option><option>Bedtime</option><option>Other</option></select></label>
-<label>Note<input id="note" maxlength="80"></label>
-<button>Add reading</button>
+<label><span id="vlab">Reading (mg/dL)</span><input id="val" type="number" min="20" max="600" step="1" required></label>
+<label><span id="dlab">Date and time</span><input id="dt" type="datetime-local" required></label>
+<label id="ctxw"><span>Context</span><select id="ctx"><option>Fasting</option><option>2 hrs after lunch</option><option>2 hrs after dinner</option><option>Bedtime</option><option>Custom</option></select></label>
+<label id="cuw" hidden><span>Custom context</span><input id="cu" maxlength="40" placeholder="For example, after a walk"></label>
+<label><span>Note</span><input id="note" maxlength="80"></label>
+<button id="sbtn">Add reading</button>
 </form>
 </div>
 
 <div class="card">
+<div class="themes">
+<label style="flex:0 0 auto"><span>Theme</span><div id="sws" class="themes" style="gap:8px"></div></label>
+<label style="flex:0 0 80px"><span>Color 1</span><input id="c1" type="color"></label>
+<label style="flex:0 0 80px"><span>Color 2</span><input id="c2" type="color"></label>
+</div>
+</div>
+
+<div class="card">
 <div class="filters">
-<label>From<input id="from" type="date"></label>
-<label>To<input id="to" type="date"></label>
+<label><span>From</span><input id="from" type="date"></label>
+<label><span>To</span><input id="to" type="date"></label>
+<label><span>Show</span><select id="tf"><option value="all">All entries</option><option value="glu">Glucose</option><option value="basal">Basal doses</option><option value="bolus">Bolus doses</option></select></label>
 <button class="alt" id="clr" type="button">Clear filter</button>
 <button id="csv" type="button">Export CSV</button>
 </div>
@@ -73,26 +99,121 @@ th{color:var(--mute);font-weight:500;font-size:.8rem}
 <div class="card"><div class="chart"><canvas id="c" aria-label="Glucose over time"></canvas></div></div>
 
 <div class="card">
-<div class="row"><b>Readings</b><span id="cnt" class="sub" style="margin:0"></span></div>
-<div class="scroll"><table><thead><tr><th>Date</th><th>mg/dL</th><th>Status</th><th>Context</th><th>Note</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
+<div class="row" style="margin-bottom:10px"><b>Entries</b><span id="cnt" class="sub"></span></div>
+<div class="scroll"><table><thead><tr><th>Date</th><th>Type</th><th>Value</th><th>Status</th><th>Context</th><th>Note</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
 </div>
 </main>
 <script>
-const KEY="glucose-log-v1";
 const CLIENT_ID="644135984856-9m9p714ammnh0fgkcmbnguo7qepqv9nq.apps.googleusercontent.com";
 const SCOPE="https://www.googleapis.com/auth/drive.appdata";
-const DKEY="glucose-del-v1",FKEY="glucose-fileid",AKEY="glucose-drive-on";
+const KEY="glucose-log-v1",DKEY="glucose-del-v1",FKEY="glucose-fileid",AKEY="glucose-drive-on",TKEY="glucose-theme-v1";
+const LOW=80,HIGH=150;
 const L={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
 let data=[],dels=[];
 try{data=JSON.parse(L.get(KEY)||"[]")}catch(e){}
 try{dels=JSON.parse(L.get(DKEY)||"[]")}catch(e){}
 const $=id=>document.getElementById(id);
 const configured=!CLIENT_ID.startsWith("PASTE");
-let tok=null,timer=null,busy=false;
+let tok=null,timer=null,busy=false,chart,mode="glu";
 const setS=t=>{$("sync").textContent=t};
 const localSave=()=>{L.set(KEY,JSON.stringify(data));L.set(DKEY,JSON.stringify(dels))};
 const save=()=>{localSave();if(configured&&L.get(AKEY)){clearTimeout(timer);timer=setTimeout(()=>sync(false),1500)}};
+const status=v=>v<LOW?["Low","low"]:v>HIGH?["High","high"]:["In range","ok"];
+const pad=n=>String(n).padStart(2,"0");
+const localNow=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`};
+const fmt=s=>new Date(s).toLocaleString([], {dateStyle:"medium",timeStyle:"short"});
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const typ=r=>r.type||"glu";
+const TN={glu:"Glucose",basal:"Basal",bolus:"Bolus"};
+const r1=x=>Math.round(x*10)/10;
 
+/* theme */
+const THEMES=[["Ocean","#0891b2","#7c3aed"],["Sunset","#f97316","#db2777"],["Forest","#16a34a","#0d9488"],["Berry","#c026d3","#4f46e5"],["Ember","#dc2626","#f59e0b"]];
+function applyTheme(a,b,init){
+  const s=document.documentElement.style;s.setProperty("--a1",a);s.setProperty("--a2",b);
+  $("c1").value=a;$("c2").value=b;
+  if(!init){L.set(TKEY,JSON.stringify([a,b]));render()}
+}
+THEMES.forEach(([n,a,b])=>{const e=document.createElement("button");e.type="button";e.className="sw";e.title=n;e.setAttribute("aria-label",n+" theme");e.style.background=`linear-gradient(135deg,${a},${b})`;e.onclick=()=>applyTheme(a,b);$("sws").appendChild(e)});
+["c1","c2"].forEach(i=>$(i).addEventListener("input",()=>applyTheme($("c1").value,$("c2").value)));
+try{const t=JSON.parse(L.get(TKEY)||"null");if(t)applyTheme(t[0],t[1],true);else applyTheme(THEMES[0][1],THEMES[0][2],true)}catch(e){applyTheme(THEMES[0][1],THEMES[0][2],true)}
+
+/* entry mode */
+function setMode(m){
+  mode=m;
+  document.querySelectorAll(".seg button").forEach(b=>{const on=b.dataset.m===m;b.classList.toggle("on",on);b.setAttribute("aria-pressed",on)});
+  const g=m==="glu",v=$("val");
+  $("vlab").textContent=g?"Reading (mg/dL)":m==="basal"?"Basal dose (units)":"Bolus dose (units)";
+  $("dlab").textContent=g?"Date and time":"Time taken";
+  v.min=g?20:0.5;v.max=g?600:200;v.step=g?1:0.5;
+  $("ctxw").hidden=!g;$("sbtn").textContent=g?"Add reading":m==="basal"?"Log basal dose":"Log bolus dose";
+  ctxChange();
+}
+function ctxChange(){const c=mode==="glu"&&$("ctx").value==="Custom";$("cuw").hidden=!c;$("cu").required=c}
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>setMode(b.dataset.m));
+$("ctx").addEventListener("change",ctxChange);
+
+/* data views */
+function inRange(){
+  const f=$("from").value,t=$("to").value;
+  return data.filter(r=>{const d=r.dt.slice(0,10);return (!f||d>=f)&&(!t||d<=t)}).sort((a,b)=>a.dt<b.dt?-1:1);
+}
+function render(){
+  const all=inRange(),tf=$("tf").value;
+  const rows=tf==="all"?all:all.filter(r=>typ(r)===tf);
+  const gl=all.filter(r=>typ(r)==="glu"),vals=gl.map(r=>r.v);
+  const sum=t=>r1(all.filter(r=>typ(r)===t).reduce((a,r)=>a+r.v,0));
+  const avg=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):"-";
+  const inr=vals.length?Math.round(vals.filter(v=>v>=LOW&&v<=HIGH).length/vals.length*100)+"%":"-";
+  const mk=(n,l)=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`;
+  $("stats").innerHTML=mk(avg,"Average glucose")+mk(vals.length?Math.min(...vals):"-","Lowest")+mk(vals.length?Math.max(...vals):"-","Highest")+mk(inr,"Time in range")+mk(vals.length,"Readings")+mk(sum("basal")+" u","Basal total")+mk(sum("bolus")+" u","Bolus total");
+  $("cnt").textContent=rows.length+" shown";
+  $("tb").innerHTML=rows.length?rows.slice().reverse().map(r=>{
+    const t=typ(r),g=t==="glu",[s,c]=g?status(r.v):["",""];
+    return `<tr><td>${fmt(r.dt)}</td><td><span class="ty">${TN[t]}</span></td><td><b>${r.v}</b> ${g?"mg/dL":"units"}</td><td>${g?`<span class="tag ${c}">${s}</span>`:""}</td><td>${esc(r.ctx||"")}</td><td>${esc(r.note||"")}</td><td><button class="del" data-id="${r.id}" aria-label="Delete entry">Delete</button></td></tr>`}).join(""):`<tr><td colspan="7" class="empty">No entries in this range. Add one above.</td></tr>`;
+  if(typeof Chart==="undefined")return;
+  const cs=getComputedStyle(document.documentElement),g=n=>cs.getPropertyValue(n).trim();
+  const a1=g("--a1"),mute=g("--mute"),line=g("--line");
+  const labels=gl.map(r=>fmt(r.dt));
+  const ds=[
+    {label:"Glucose",data:vals,borderColor:a1,backgroundColor:a1+"22",fill:true,tension:.3,pointRadius:4,pointBackgroundColor:gl.map(r=>g("--"+status(r.v)[1]))},
+    {label:"Low limit",data:vals.map(()=>LOW),borderColor:mute,borderDash:[5,5],pointRadius:0,borderWidth:1},
+    {label:"High limit",data:vals.map(()=>HIGH),borderColor:mute,borderDash:[5,5],pointRadius:0,borderWidth:1}
+  ];
+  if(chart){const o=chart.options;chart.data.labels=labels;chart.data.datasets=ds;
+    o.scales.x.grid.color=line;o.scales.y.grid.color=line;o.scales.x.ticks.color=mute;o.scales.y.ticks.color=mute;o.plugins.legend.labels.color=mute;chart.update()}
+  else chart=new Chart($("c"),{type:"line",data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:mute}}},
+    scales:{x:{ticks:{color:mute,maxTicksLimit:6},grid:{color:line}},y:{suggestedMin:40,suggestedMax:240,ticks:{color:mute},grid:{color:line}}}}});
+}
+
+/* events */
+$("f").addEventListener("submit",e=>{
+  e.preventDefault();
+  const o={id:Date.now()+""+Math.random().toString(36).slice(2,6),type:mode,v:+$("val").value,dt:$("dt").value,note:$("note").value.trim()};
+  if(mode==="glu")o.ctx=$("ctx").value==="Custom"?$("cu").value.trim():$("ctx").value;
+  data.push(o);save();
+  $("val").value="";$("note").value="";$("cu").value="";$("dt").value=localNow();render();
+});
+$("tb").addEventListener("click",e=>{
+  const id=e.target.dataset&&e.target.dataset.id;
+  if(id&&confirm("Delete this entry?")){data=data.filter(r=>r.id!==id);dels.push(id);save();render()}
+});
+["from","to","tf"].forEach(i=>$(i).addEventListener("input",render));
+$("clr").onclick=()=>{$("from").value="";$("to").value="";$("tf").value="all";render()};
+$("csv").onclick=()=>{
+  const all=inRange(),tf=$("tf").value,rows=tf==="all"?all:all.filter(r=>typ(r)===tf);
+  if(!rows.length){alert("No entries to export.");return}
+  const q=s=>'"'+String(s==null?"":s).replace(/"/g,'""')+'"';
+  const out=["Date time,Type,Value,Unit,Status,Context,Note"].concat(rows.map(r=>{const t=typ(r),g=t==="glu";
+    return [q(r.dt.replace("T"," ")),q(TN[t]),r.v,g?"mg/dL":"units",q(g?status(r.v)[0]:""),q(r.ctx),q(r.note)].join(",")}));
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([out.join("\n")],{type:"text/csv"}));
+  a.download="log.csv";document.body.appendChild(a);a.click();a.remove();
+};
+window.addEventListener("storage",e=>{if(e.key===KEY){try{data=JSON.parse(e.newValue||"[]")}catch(x){}render()}});
+
+/* Google Drive sync */
 function gsi(){return new Promise((ok,no)=>{if(window.google&&google.accounts)return ok();const s=document.createElement("script");s.src="https://accounts.google.com/gsi/client";s.onload=ok;s.onerror=()=>no(new Error("offline"));document.head.appendChild(s)})}
 async function getToken(i){
   await gsi();
@@ -132,63 +253,6 @@ async function sync(i){
   }catch(e){if(/404/.test(e.message))L.del(FKEY);setS("Not synced ("+e.message+"). Press Sync now.");$("gsync").textContent="Sync now"}
   busy=false;
 }
-const status=v=>v<70?["Low","low"]:v>180?["High","high"]:["In range","ok"];
-const pad=n=>String(n).padStart(2,"0");
-const localNow=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`};
-const fmt=s=>new Date(s).toLocaleString([], {dateStyle:"medium",timeStyle:"short"});
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-let chart;
-
-function filtered(){
-  const f=$("from").value,t=$("to").value;
-  return data.filter(r=>{const d=r.dt.slice(0,10);return (!f||d>=f)&&(!t||d<=t)}).sort((a,b)=>a.dt<b.dt?-1:1);
-}
-function render(){
-  const rows=filtered();
-  const vals=rows.map(r=>r.v);
-  const avg=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):"-";
-  const inr=vals.length?Math.round(vals.filter(v=>v>=70&&v<=180).length/vals.length*100)+"%":"-";
-  const mk=(n,l)=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`;
-  $("stats").innerHTML=mk(avg,"Average")+mk(vals.length?Math.min(...vals):"-","Lowest")+mk(vals.length?Math.max(...vals):"-","Highest")+mk(inr,"Time in range")+mk(vals.length,"Readings");
-  $("cnt").textContent=rows.length+" shown";
-  $("tb").innerHTML=rows.length?rows.slice().reverse().map(r=>{const [s,c]=status(r.v);return `<tr><td>${fmt(r.dt)}</td><td><b>${r.v}</b></td><td><span class="tag ${c}">${s}</span></td><td>${esc(r.ctx)}</td><td>${esc(r.note)}</td><td><button class="del" data-id="${r.id}" aria-label="Delete reading">Delete</button></td></tr>`}).join(""):`<tr><td colspan="6" class="empty">No readings in this range. Add one above.</td></tr>`;
-  if(typeof Chart==="undefined"){return}
-  const cs=getComputedStyle(document.documentElement);
-  const acc=cs.getPropertyValue("--acc").trim(),mute=cs.getPropertyValue("--mute").trim(),line=cs.getPropertyValue("--line").trim();
-  const labels=rows.map(r=>fmt(r.dt));
-  const ds=[
-    {label:"Glucose",data:vals,borderColor:acc,backgroundColor:acc,tension:.3,pointRadius:4,
-     pointBackgroundColor:rows.map(r=>cs.getPropertyValue("--"+status(r.v)[1]).trim())},
-    {label:"Low limit",data:vals.map(()=>70),borderColor:mute,borderDash:[5,5],pointRadius:0,borderWidth:1},
-    {label:"High limit",data:vals.map(()=>180),borderColor:mute,borderDash:[5,5],pointRadius:0,borderWidth:1}
-  ];
-  if(chart){chart.data.labels=labels;chart.data.datasets=ds;
-    chart.options.scales.x.grid.color=line;chart.options.scales.y.grid.color=line;chart.options.scales.x.ticks.color=mute;chart.options.scales.y.ticks.color=mute;chart.options.plugins.legend.labels.color=mute;chart.update()}
-  else chart=new Chart($("c"),{type:"line",data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,
-    plugins:{legend:{labels:{color:mute}}},
-    scales:{x:{ticks:{color:mute,maxTicksLimit:6},grid:{color:line}},y:{suggestedMin:40,suggestedMax:240,ticks:{color:mute},grid:{color:line}}}}});
-}
-$("f").addEventListener("submit",e=>{
-  e.preventDefault();
-  data.push({id:Date.now()+""+Math.random().toString(36).slice(2,6),v:+$("val").value,dt:$("dt").value,ctx:$("ctx").value,note:$("note").value.trim()});
-  save();$("val").value="";$("note").value="";$("dt").value=localNow();render();
-});
-$("tb").addEventListener("click",e=>{
-  const id=e.target.dataset&&e.target.dataset.id;
-  if(id&&confirm("Delete this reading?")){data=data.filter(r=>r.id!==id);dels.push(id);save();render()}
-});
-["from","to"].forEach(i=>$(i).addEventListener("input",render));
-$("clr").onclick=()=>{$("from").value="";$("to").value="";render()};
-$("csv").onclick=()=>{
-  const rows=filtered();
-  if(!rows.length){alert("No readings to export.");return}
-  const q=s=>'"'+String(s).replace(/"/g,'""')+'"';
-  const out=["Date time,mg/dL,Status,Context,Note"].concat(rows.map(r=>[q(r.dt.replace("T"," ")),r.v,q(status(r.v)[0]),q(r.ctx),q(r.note)].join(",")));
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob([out.join("\n")],{type:"text/csv"}));
-  a.download="glucose-log.csv";document.body.appendChild(a);a.click();a.remove();
-};
-window.addEventListener("storage",e=>{if(e.key===KEY){try{data=JSON.parse(e.newValue||"[]")}catch(x){}render()}});
 $("gsync").onclick=()=>sync(true);
 if(!configured){setS("Add your OAuth client ID in the script to enable Drive sync");$("gsync").disabled=true}
 else if(L.get(AKEY)){$("gsync").textContent="Sync now";setS("Reconnecting...");sync(false)}
