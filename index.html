@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Glucose log</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f3f6f4;--card:#fff;--ink:#14231c;--mute:#5d6f66;--line:#d9e2dd;--acc:#1f7a5a;--low:#c47a00;--ok:#1f7a5a;--high:#c0392b;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1a15;--card:#18261f;--ink:#e6efe9;--mute:#93a79c;--line:#2a3b32;--acc:#4cc79a;--low:#e5a23a;--ok:#4cc79a;--high:#ef6b5c}}
+:root[data-theme="dark"]{--bg:#0f1a15;--card:#18261f;--ink:#e6efe9;--mute:#93a79c;--line:#2a3b32;--acc:#4cc79a;--low:#e5a23a;--ok:#4cc79a;--high:#ef6b5c}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:16px}
+h1{font:600 1.5rem Georgia,"Times New Roman",serif;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat b{display:block;font-size:1.5rem}
+.stat span{color:var(--mute);font-size:.8rem}
+form,.filters{display:flex;flex-wrap:wrap;gap:10px;align-items:end}
+label{display:flex;flex-direction:column;font-size:.8rem;color:var(--mute);gap:3px;flex:1 1 130px}
+input,select{font:inherit;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);width:100%}
+button{font:inherit;padding:9px 14px;border:0;border-radius:6px;background:var(--acc);color:#fff;cursor:pointer}
+button.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.chart{position:relative;height:280px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:480px}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line)}
+th{color:var(--mute);font-weight:500;font-size:.8rem}
+.tag{padding:2px 8px;border-radius:99px;font-size:.75rem;border:1px solid currentColor}
+.low{color:var(--low)}.ok{color:var(--ok)}.high{color:var(--high)}
+.del{background:none;color:var(--mute);padding:2px 8px;border:1px solid var(--line)}
+.empty{color:var(--mute);text-align:center;padding:20px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+</style>
+</head>
+<body>
+<main>
+<h1>Glucose log</h1>
+<p class="sub">Entries stay in this browser. Targets: below 70 low, 70 to 180 in range, above 180 high (mg/dL).</p>
+
+<div class="card row" style="margin-bottom:14px">
+<span id="sync" class="sub" style="margin:0">Not connected</span>
+<button id="gsync" type="button">Connect Google Drive</button>
+</div>
+
+<div class="card">
+<form id="f">
+<label>Reading (mg/dL)<input id="val" type="number" min="20" max="600" required></label>
+<label>Date and time<input id="dt" type="datetime-local" required></label>
+<label>Context<select id="ctx"><option>Fasting</option><option>Before meal</option><option>After meal</option><option>Bedtime</option><option>Other</option></select></label>
+<label>Note<input id="note" maxlength="80"></label>
+<button>Add reading</button>
+</form>
+</div>
+
+<div class="card">
+<div class="filters">
+<label>From<input id="from" type="date"></label>
+<label>To<input id="to" type="date"></label>
+<button class="alt" id="clr" type="button">Clear filter</button>
+<button id="csv" type="button">Export CSV</button>
+</div>
+</div>
+
+<div class="stats" id="stats"></div>
+
+<div class="card"><div class="chart"><canvas id="c" aria-label="Glucose over time"></canvas></div></div>
+
+<div class="card">
+<div class="row"><b>Readings</b><span id="cnt" class="sub" style="margin:0"></span></div>
+<div class="scroll"><table><thead><tr><th>Date</th><th>mg/dL</th><th>Status</th><th>Context</th><th>Note</th><th></th></tr></thead><tbody id="tb"></tbody></table></div>
+</div>
+</main>
+<script>
+const KEY="glucose-log-v1";
+const CLIENT_ID="644135984856-9m9p714ammnh0fgkcmbnguo7qepqv9nq.apps.googleusercontent.com";
+const SCOPE="https://www.googleapis.com/auth/drive.appdata";
+const DKEY="glucose-del-v1",FKEY="glucose-fileid",AKEY="glucose-drive-on";
+const L={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}},del:k=>{try{localStorage.removeItem(k)}catch(e){}}};
+let data=[],dels=[];
+try{data=JSON.parse(L.get(KEY)||"[]")}catch(e){}
+try{dels=JSON.parse(L.get(DKEY)||"[]")}catch(e){}
+const $=id=>document.getElementById(id);
+const configured=!CLIENT_ID.startsWith("PASTE");
+let tok=null,timer=null,busy=false;
+const setS=t=>{$("sync").textContent=t};
+const localSave=()=>{L.set(KEY,JSON.stringify(data));L.set(DKEY,JSON.stringify(dels))};
+const save=()=>{localSave();if(configured&&L.get(AKEY)){clearTimeout(timer);timer=setTimeout(()=>sync(false),1500)}};
+
+function gsi(){return new Promise((ok,no)=>{if(window.google&&google.accounts)return ok();const s=document.createElement("script");s.src="https://accounts.google.com/gsi/client";s.onload=ok;s.onerror=()=>no(new Error("offline"));document.head.appendChild(s)})}
+async function getToken(i){
+  await gsi();
+  if(tok&&Date.now()<tok.exp)return tok.t;
+  return new Promise((res,rej)=>{
+    google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:SCOPE,
+      callback:r=>{if(r.error)return rej(new Error(r.error));tok={t:r.access_token,exp:Date.now()+(r.expires_in-60)*1000};res(tok.t)},
+      error_callback:e=>rej(new Error(e.type||"auth"))
+    }).requestAccessToken({prompt:i?"":"none"});
+  });
+}
+async function api(url,o={}){
+  const {i,...opt}=o;const t=await getToken(i);
+  const r=await fetch(url,{...opt,headers:{Authorization:"Bearer "+t,...(opt.headers||{})}});
+  if(!r.ok)throw new Error("Drive "+r.status);return r;
+}
+async function fileId(i){
+  let id=L.get(FKEY);if(id)return id;
+  const r=await api("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&fields=files(id)&q="+encodeURIComponent("name='glucose-data.json'"),{i});
+  const j=await r.json();
+  if(j.files[0])id=j.files[0].id;
+  else{const c=await api("https://www.googleapis.com/drive/v3/files?fields=id",{i,method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({name:"glucose-data.json",parents:["appDataFolder"]})});id=(await c.json()).id}
+  L.set(FKEY,id);return id;
+}
+async function sync(i){
+  if(busy||!configured)return;busy=true;setS("Syncing...");
+  try{
+    const id=await fileId(i);
+    const r=await api("https://www.googleapis.com/drive/v3/files/"+id+"?alt=media",{i});
+    let rem={};try{rem=await r.json()}catch(e){}
+    const d=new Set([...dels,...(rem.deleted||[])]),m=new Map();
+    [...(rem.entries||[]),...data].forEach(x=>m.set(x.id,x));
+    data=[...m.values()].filter(x=>!d.has(x.id));dels=[...d];localSave();
+    await api("https://www.googleapis.com/upload/drive/v3/files/"+id+"?uploadType=media",{i,method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({entries:data,deleted:dels})});
+    L.set(AKEY,"1");$("gsync").textContent="Sync now";
+    setS("Synced "+new Date().toLocaleTimeString([],{timeStyle:"short"}));render();
+  }catch(e){if(/404/.test(e.message))L.del(FKEY);setS("Not synced ("+e.message+"). Press Sync now.");$("gsync").textContent="Sync now"}
+  busy=false;
+}
+const status=v=>v<70?["Low","low"]:v>180?["High","high"]:["In range","ok"];
+const pad=n=>String(n).padStart(2,"0");
+const localNow=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`};
+const fmt=s=>new Date(s).toLocaleString([], {dateStyle:"medium",timeStyle:"short"});
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let chart;
+
+function filtered(){
+  const f=$("from").value,t=$("to").value;
+  return data.filter(r=>{const d=r.dt.slice(0,10);return (!f||d>=f)&&(!t||d<=t)}).sort((a,b)=>a.dt<b.dt?-1:1);
+}
+function render(){
+  const rows=filtered();
+  const vals=rows.map(r=>r.v);
+  const avg=vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):"-";
+  const inr=vals.length?Math.round(vals.filter(v=>v>=70&&v<=180).length/vals.length*100)+"%":"-";
+  const mk=(n,l)=>`<div class="stat"><b>${n}</b><span>${l}</span></div>`;
+  $("stats").innerHTML=mk(avg,"Average")+mk(vals.length?Math.min(...vals):"-","Lowest")+mk(vals.length?Math.max(...vals):"-","Highest")+mk(inr,"Time in range")+mk(vals.length,"Readings");
+  $("cnt").textContent=rows.length+" shown";
+  $("tb").innerHTML=rows.length?rows.slice().reverse().map(r=>{const [s,c]=status(r.v);return `<tr><td>${fmt(r.dt)}</td><td><b>${r.v}</b></td><td><span class="tag ${c}">${s}</span></td><td>${esc(r.ctx)}</td><td>${esc(r.note)}</td><td><button class="del" data-id="${r.id}" aria-label="Delete reading">Delete</button></td></tr>`}).join(""):`<tr><td colspan="6" class="empty">No readings in this range. Add one above.</td></tr>`;
+  if(typeof Chart==="undefined"){return}
+  const cs=getComputedStyle(document.documentElement);
+  const acc=cs.getPropertyValue("--acc").trim(),mute=cs.getPropertyValue("--mute").trim(),line=cs.getPropertyValue("--line").trim();
+  const labels=rows.map(r=>fmt(r.dt));
+  const ds=[
+    {label:"Glucose",data:vals,borderColor:acc,backgroundColor:acc,tension:.3,pointRadius:4,
+     pointBackgroundColor:rows.map(r=>cs.getPropertyValue("--"+status(r.v)[1]).trim())},
+    {label:"Low limit",data:vals.map(()=>70),borderColor:mute,borderDash:[5,5],pointRadius:0,borderWidth:1},
+    {label:"High limit",data:vals.map(()=>180),borderColor:mute,borderDash:[5,5],pointRadius:0,borderWidth:1}
+  ];
+  if(chart){chart.data.labels=labels;chart.data.datasets=ds;
+    chart.options.scales.x.grid.color=line;chart.options.scales.y.grid.color=line;chart.options.scales.x.ticks.color=mute;chart.options.scales.y.ticks.color=mute;chart.options.plugins.legend.labels.color=mute;chart.update()}
+  else chart=new Chart($("c"),{type:"line",data:{labels,datasets:ds},options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:mute}}},
+    scales:{x:{ticks:{color:mute,maxTicksLimit:6},grid:{color:line}},y:{suggestedMin:40,suggestedMax:240,ticks:{color:mute},grid:{color:line}}}}});
+}
+$("f").addEventListener("submit",e=>{
+  e.preventDefault();
+  data.push({id:Date.now()+""+Math.random().toString(36).slice(2,6),v:+$("val").value,dt:$("dt").value,ctx:$("ctx").value,note:$("note").value.trim()});
+  save();$("val").value="";$("note").value="";$("dt").value=localNow();render();
+});
+$("tb").addEventListener("click",e=>{
+  const id=e.target.dataset&&e.target.dataset.id;
+  if(id&&confirm("Delete this reading?")){data=data.filter(r=>r.id!==id);dels.push(id);save();render()}
+});
+["from","to"].forEach(i=>$(i).addEventListener("input",render));
+$("clr").onclick=()=>{$("from").value="";$("to").value="";render()};
+$("csv").onclick=()=>{
+  const rows=filtered();
+  if(!rows.length){alert("No readings to export.");return}
+  const q=s=>'"'+String(s).replace(/"/g,'""')+'"';
+  const out=["Date time,mg/dL,Status,Context,Note"].concat(rows.map(r=>[q(r.dt.replace("T"," ")),r.v,q(status(r.v)[0]),q(r.ctx),q(r.note)].join(",")));
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([out.join("\n")],{type:"text/csv"}));
+  a.download="glucose-log.csv";document.body.appendChild(a);a.click();a.remove();
+};
+window.addEventListener("storage",e=>{if(e.key===KEY){try{data=JSON.parse(e.newValue||"[]")}catch(x){}render()}});
+$("gsync").onclick=()=>sync(true);
+if(!configured){setS("Add your OAuth client ID in the script to enable Drive sync");$("gsync").disabled=true}
+else if(L.get(AKEY)){$("gsync").textContent="Sync now";setS("Reconnecting...");sync(false)}
+$("dt").value=localNow();
+render();
+window.addEventListener("load",render);
+</script>
+</body>
+</html>
